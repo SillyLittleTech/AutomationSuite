@@ -1,0 +1,36 @@
+# This is an example workflow showing how to use the Issue & PR Automation Suite
+# Copy this file to your repository's .github/workflows/ directory and customize as needed
+
+name: Issue & PR Automation Suite
+
+on:
+  issues:
+    types: [opened, closed, reopened, labeled, unlabeled, milestoned, demilestoned, edited]
+  pull_request:
+    types: [opened, closed, reopened, ready_for_review, converted_to_draft, synchronize, edited]
+  pull_request_target:
+    types: [opened, synchronize]
+
+permissions:
+  issues: write
+  pull-requests: write
+  repository-projects: write
+  contents: read
+
+env:
+  PROJECT_NAME: "Portfolio Devmt"
+
+jobs:
+  automation:
+    name: Run Automation Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Issue & PR Automation
+        uses: SillyLittleTech/AutomationSuite@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          project-name: ${{ env.PROJECT_NAME }}
+          enable-project-automation: "true"
+          enable-label-sync: "true"
+          enable-zap-labeling: "true"
+          zap-labels: "Meta,Stylistic,javascript,meta:seq,ZAP!"

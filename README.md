@@ -9,6 +9,22 @@ A comprehensive GitHub Action that automates issue and pull request workflows in
 - 🏷️ **Label & Milestone Sync** - Keep labels and milestones synchronized between linked issues and PRs
 - 🔒 **ZAP Security Scan Auto-labeling** - Automatically label ZAP security scan report issues
 
+## Quick Start
+
+```yaml
+- uses: SillyLittleTech/AutomationSuite@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## Version Pinning
+
+We recommend pinning to a specific version for stability:
+
+- `@v1` - Latest v1.x.x release (recommended for most users)
+- `@v1.0.0` - Specific release version (maximum stability)
+- `@main` - Latest development version (not recommended for production)
+
 ## Features
 
 ### 🎯 Project Board Automation
@@ -324,7 +340,11 @@ If you see "Project not found" errors:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 
 ## License
 

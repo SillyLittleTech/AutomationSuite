@@ -1,5 +1,5 @@
 name: 'Issue & PR Automation Suite'
-description: 'Comprehensive automation for GitHub Issues and Pull Requests including project board management, label/milestone synchronization, and ZAP security scan auto-labeling'
+description: 'Automate GitHub Issues & PRs with project boards, label/milestone sync, and ZAP scan labeling'
 author: 'SillyLittleTech'
 
 branding:

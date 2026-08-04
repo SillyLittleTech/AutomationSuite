@@ -26,11 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Issue & PR Automation
-        uses: SillyLittleTech/AutomationSuite@v1
+        uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           project-name: ${{ env.PROJECT_NAME }}
           enable-project-automation: "true"
           enable-label-sync: "true"
-          enable-zap-labeling: "true"
-          zap-labels: "Meta,Stylistic,javascript,meta:seq,ZAP!"
+          enable-auto-labeling: "true"
+          auto-label-rules: '[{"pattern": "ZAP Scan Baseline Report", "labels": ["Meta", "Stylistic", "javascript", "meta:seq", "ZAP!"]}]'

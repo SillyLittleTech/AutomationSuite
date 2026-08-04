@@ -23,14 +23,14 @@ inputs:
     description: 'Enable label and milestone synchronization between issues and PRs'
     required: false
     default: 'true'
-  enable-zap-labeling:
-    description: 'Enable automatic labeling of ZAP security scan issues'
+  enable-auto-labeling:
+    description: 'Enable automatic labeling of issues and PRs based on text matching'
     required: false
     default: 'true'
-  zap-labels:
-    description: 'Comma-separated list of labels to apply to ZAP scan issues'
+  auto-label-rules:
+    description: 'JSON array of objects with "pattern" and "labels" keys. Example: [{"pattern": "ZAP Scan Baseline Report", "labels": ["Meta","Stylistic","javascript","meta:seq","ZAP!"]}]'
     required: false
-    default: 'Meta,Stylistic,javascript,meta:seq,ZAP!'
+    default: '[{"pattern": "ZAP Scan Baseline Report", "labels": ["Meta", "Stylistic", "javascript", "meta:seq", "ZAP!"]}]'
 
 runs:
   using: 'composite'
@@ -172,12 +172,13 @@ runs:
             
             // Extract issue numbers from PR body and title
             const prText = `${pr.title} ${pr.body || ''}`;
-            const issuePattern = /#(\d+)|(?:close[ds]?|fix(?:e[ds]?)?|resolve[ds]?)\s+#(\d+)|(?:https?:\/\/)?(?:www\.)?github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+)/gi;
+            // Improved issue pattern matching
+            const issuePattern = /(?:(?:close[sd]?|fix(?:e[sd]?)?|resolve[sd]?)\s+(?:#(\d+)|https?:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+)))|(?:#(\d+))|(?:https?:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+))/gi;
             const issueNumbers = new Set();
             let match;
             
             while ((match = issuePattern.exec(prText)) !== null) {
-              const issueNum = match[1] || match[2] || match[3];
+              const issueNum = match[1] || match[2] || match[3] || match[4];
               if (issueNum) {
                 issueNumbers.add(parseInt(issueNum));
               }
@@ -343,12 +344,13 @@ runs:
           
           // Helper function to extract linked issue numbers from text
           function extractIssueNumbers(text) {
-            const issuePattern = /#(\d+)|(?:close[ds]?|fix(?:e[ds]?)?|resolve[ds]?)\s+#(\d+)|(?:https?:\/\/)?(?:www\.)?github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+)/gi;
+            // Improved issue pattern matching
+            const issuePattern = /(?:(?:close[sd]?|fix(?:e[sd]?)?|resolve[sd]?)\s+(?:#(\d+)|https?:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+)))|(?:#(\d+))|(?:https?:\/\/github\.com\/[^\/]+\/[^\/]+\/issues\/(\d+))/gi;
             const issueNumbers = new Set();
             let match;
             
             while ((match = issuePattern.exec(text)) !== null) {
-              const issueNum = match[1] || match[2] || match[3];
+              const issueNum = match[1] || match[2] || match[3] || match[4];
               if (issueNum) {
                 issueNumbers.add(parseInt(issueNum));
               }
@@ -535,53 +537,72 @@ runs:
           
           console.log('🎉 Label & milestone sync completed')
 
-    - name: Auto-label ZAP Security Scan Issues
-      if: ${{ inputs.enable-zap-labeling == 'true' && github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'edited') }}
+    - name: Auto-label Issues and PRs
+      if: ${{ inputs.enable-auto-labeling == 'true' && (github.event_name == 'issues' || github.event_name == 'pull_request') && (github.event.action == 'opened' || github.event.action == 'edited') }}
       uses: actions/github-script@v7
       with:
         github-token: ${{ inputs.github-token }}
         script: |
           const { owner, repo } = context.repo;
-          const issue = context.payload.issue;
-          const issueNumber = issue.number;
-          const issueTitle = issue.title || '';
+          const isIssue = context.eventName === 'issues';
+          const item = isIssue ? context.payload.issue : context.payload.pull_request;
+          const itemNumber = item.number;
+          const itemTitle = item.title || '';
+          const itemBody = item.body || '';
+          const textToMatch = `${itemTitle} ${itemBody}`.toLowerCase();
           
-          console.log(`Checking issue #${issueNumber}: "${issueTitle}"`);
+          console.log(`Checking ${isIssue ? 'issue' : 'PR'} #${itemNumber}: "${itemTitle}"`);
           
-          // Configurable pattern for ZAP Scan Baseline Report (case-insensitive)
-          const zapPattern = 'ZAP Scan Baseline Report';
-          if (issueTitle.toLowerCase().includes(zapPattern.toLowerCase())) {
-            console.log('✅ Issue title matches ZAP Scan Baseline Report pattern');
+          let rules = [];
+          try {
+            rules = JSON.parse('${{ inputs.auto-label-rules }}');
+            if (!Array.isArray(rules)) {
+              console.error('❌ auto-label-rules must be a JSON array');
+              return;
+            }
+          } catch (e) {
+            console.error('❌ Failed to parse auto-label-rules JSON:', e.message);
+            return;
+          }
+
+          // Get current labels on the item
+          const currentLabels = (item.labels || []).map(label =>
+            typeof label === 'object' ? label.name : label
+          ).filter(Boolean);
+
+          let labelsToApply = new Set(currentLabels);
+          let matchedAny = false;
+
+          for (const rule of rules) {
+            if (!rule.pattern || !rule.labels || !Array.isArray(rule.labels)) {
+              console.log('⚠️ Skipping invalid rule:', JSON.stringify(rule));
+              continue;
+            }
             
-            // Parse labels from input
-            const labelsToApply = '${{ inputs.zap-labels }}'.split(',').map(l => l.trim()).filter(Boolean);
-            
-            // Get current labels on the issue
-            const currentLabels = issue.labels.map(label => 
-              typeof label === 'object' ? label.name : label
-            ).filter(Boolean);
-            
-            console.log('Current labels:', currentLabels);
-            
-            // Combine current labels with new labels (avoiding duplicates)
-            const allLabels = [...new Set([...currentLabels, ...labelsToApply])];
-            
-            console.log('Applying labels:', allLabels);
+            if (textToMatch.includes(rule.pattern.toLowerCase())) {
+              console.log(`✅ Matched pattern: "${rule.pattern}"`);
+              matchedAny = true;
+              rule.labels.forEach(label => labelsToApply.add(label.trim()));
+            }
+          }
+
+          if (matchedAny) {
+            const allLabels = Array.from(labelsToApply);
+            console.log('Applying combined labels:', allLabels);
             
             try {
               await github.rest.issues.setLabels({
                 owner,
                 repo,
-                issue_number: issueNumber,
+                issue_number: itemNumber,
                 labels: allLabels,
               });
-              
-              console.log(`✅ Successfully applied labels to issue #${issueNumber}`);
+              console.log(`✅ Successfully applied labels to ${isIssue ? 'issue' : 'PR'} #${itemNumber}`);
             } catch (error) {
-              console.error(`❌ Failed to apply labels to issue #${issueNumber}:`, error.message);
+              console.error(`❌ Failed to apply labels:`, error.message);
             }
           } else {
-            console.log('ℹ️  Issue title does not match ZAP Scan Baseline Report pattern, skipping');
+            console.log('ℹ️  No matching patterns found, skipping auto-labeling');
           }
           
-          console.log('✅ ZAP issue labeling completed')
+          console.log('✅ Auto-labeling completed')

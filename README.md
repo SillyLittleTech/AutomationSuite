@@ -12,7 +12,7 @@ A comprehensive GitHub Action that automates issue and pull request workflows in
 ## Quick Start
 
 ```yaml
-- uses: SillyLittleTech/AutomationSuite@v1
+- uses: SillyLittleTech/AutomationSuite@v2.1.5
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -21,8 +21,8 @@ A comprehensive GitHub Action that automates issue and pull request workflows in
 
 We recommend pinning to a specific version for stability:
 
-- `@v1` - Latest v1.x.x release (recommended for most users)
-- `@v1.0.0` - Specific release version (maximum stability)
+- `@v2` - Latest v2.x.x release (recommended for most users)
+- `@v2.1.5` - Specific release version (maximum stability)
 - `@main` - Latest development version (not recommended for production)
 
 ## Features
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Automation Suite
-        uses: SillyLittleTech/AutomationSuite@v1
+        uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           project-name: "My Project"
@@ -91,14 +91,14 @@ Customize the behavior with input parameters:
 
 ```yaml
 - name: Run Automation Suite
-  uses: SillyLittleTech/AutomationSuite@v1
+  uses: SillyLittleTech/AutomationSuite@v2.1.5
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     project-name: "Portfolio Devmt"
     enable-project-automation: "true"
     enable-label-sync: "true"
-    enable-zap-labeling: "true"
-    zap-labels: "security,automated,zap-scan,needs-review"
+    enable-auto-labeling: "true"
+    auto-label-rules: '[{"pattern": "ZAP Scan Baseline Report", "labels": ["security", "automated", "zap-scan", "needs-review"]}]'
 ```
 
 ### Selective Features
@@ -109,38 +109,38 @@ Enable only specific features:
 
 ```yaml
 - name: Project Board Automation
-  uses: SillyLittleTech/AutomationSuite@v1
+  uses: SillyLittleTech/AutomationSuite@v2.1.5
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     project-name: "Sprint Board"
     enable-project-automation: "true"
     enable-label-sync: "false"
-    enable-zap-labeling: "false"
+    enable-auto-labeling: "false"
 ```
 
 #### Label & Milestone Sync Only
 
 ```yaml
 - name: Label & Milestone Sync
-  uses: SillyLittleTech/AutomationSuite@v1
+  uses: SillyLittleTech/AutomationSuite@v2.1.5
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     enable-project-automation: "false"
     enable-label-sync: "true"
-    enable-zap-labeling: "false"
+    enable-auto-labeling: "false"
 ```
 
-#### ZAP Auto-labeling Only
+#### Auto-labeling Only
 
 ```yaml
-- name: ZAP Security Issue Labeling
-  uses: SillyLittleTech/AutomationSuite@v1
+- name: Auto-labeling Issues and PRs
+  uses: SillyLittleTech/AutomationSuite@v2.1.5
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     enable-project-automation: "false"
     enable-label-sync: "false"
-    enable-zap-labeling: "true"
-    zap-labels: "security,zap,needs-triage"
+    enable-auto-labeling: "true"
+    auto-label-rules: '[{"pattern": "bug", "labels": ["bug", "triage"]}]'
 ```
 
 ## Input Parameters
@@ -151,8 +151,8 @@ Enable only specific features:
 | `project-name` | Name of GitHub Projects V2 project | No | `Portfolio Devmt` |
 | `enable-project-automation` | Enable project board automation | No | `true` |
 | `enable-label-sync` | Enable label/milestone sync | No | `true` |
-| `enable-zap-labeling` | Enable ZAP issue auto-labeling | No | `true` |
-| `zap-labels` | Comma-separated labels for ZAP issues | No | `Meta,Stylistic,javascript,meta:seq,ZAP!` |
+| `enable-auto-labeling` | Enable auto-labeling based on text matching | No | `true` |
+| `auto-label-rules` | JSON array configuring pattern matching and corresponding labels to apply | No | `[{"pattern": "ZAP Scan Baseline Report", "labels": ["Meta", "Stylistic", "javascript", "meta:seq", "ZAP!"]}]` |
 
 ## How It Works
 
@@ -206,11 +206,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Full Automation
-        uses: SillyLittleTech/AutomationSuite@v1
+        uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           project-name: "Development Board"
-          zap-labels: "security,scan,automated,needs-review"
+          auto-label-rules: '[{"pattern": "ZAP Scan Baseline Report", "labels": ["security", "scan", "automated", "needs-review"]}]'
 ```
 
 ### Example 2: Multiple Jobs for Different Features
@@ -236,34 +236,34 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'issues' || github.event_name == 'pull_request'
     steps:
-      - uses: SillyLittleTech/AutomationSuite@v1
+      - uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           project-name: "Sprint Planning"
           enable-label-sync: "false"
-          enable-zap-labeling: "false"
+          enable-auto-labeling: "false"
 
   label-sync:
     name: Label & Milestone Sync
     runs-on: ubuntu-latest
     steps:
-      - uses: SillyLittleTech/AutomationSuite@v1
+      - uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           enable-project-automation: "false"
-          enable-zap-labeling: "false"
+          enable-auto-labeling: "false"
 
   security-labeling:
     name: Security Scan Labeling
     runs-on: ubuntu-latest
     if: github.event_name == 'issues'
     steps:
-      - uses: SillyLittleTech/AutomationSuite@v1
+      - uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           enable-project-automation: "false"
           enable-label-sync: "false"
-          zap-labels: "security,vulnerability,zap-baseline"
+          auto-label-rules: '[{"pattern": "ZAP Scan Baseline Report", "labels": ["security", "vulnerability", "zap-baseline"]}]'
 ```
 
 ### Example 3: Security-Focused Setup
@@ -283,13 +283,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Auto-label Security Scans
-        uses: SillyLittleTech/AutomationSuite@v1
+        uses: SillyLittleTech/AutomationSuite@v2.1.5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           enable-project-automation: "false"
           enable-label-sync: "false"
-          enable-zap-labeling: "true"
-          zap-labels: "security,automated-scan,needs-triage,zap-report"
+          enable-auto-labeling: "true"
+          auto-label-rules: '[{"pattern": "ZAP Scan Baseline Report", "labels": ["security", "automated-scan", "needs-triage", "zap-report"]}]'
 ```
 
 ## Prerequisites
@@ -332,11 +332,12 @@ If you see "Project not found" errors:
 - Check that the PR body or title contains valid issue references
 - Verify labels exist in the repository
 
-### ZAP issues not being labeled
+### Issues or PRs not being auto-labeled
 
-- Confirm the issue title contains "ZAP Scan Baseline Report" (case-insensitive)
-- Verify labels specified in `zap-labels` exist in your repository
-- Check workflow permissions include `issues: write`
+- Confirm the issue/PR title or body contains the exact text pattern specified in your JSON config (case-insensitive).
+- Verify labels specified in your `auto-label-rules` JSON exist in your repository.
+- Ensure `auto-label-rules` is valid JSON and passed correctly.
+- Check workflow permissions include `issues: write` and `pull-requests: write`.
 
 ## Contributing
 
